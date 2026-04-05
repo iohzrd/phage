@@ -180,6 +180,7 @@ impl Game {
             let t = self.state_lerp_t;
             let mut sorted: Vec<&CellState> = state.cells.iter().collect();
             sorted.sort_by(|a, b| a.mass.partial_cmp(&b.mass).unwrap());
+            let mut labels: Vec<(Vec2, f32, String)> = Vec::new();
             for c in &sorted {
                 let color = Color::new(c.color[0], c.color[1], c.color[2], c.color[3]);
                 let radius = mass_to_radius(c.mass);
@@ -199,16 +200,27 @@ impl Game {
 
                 draw_circle(pos.x, pos.y, radius, color);
                 draw_circle_lines(pos.x, pos.y, radius, 2.0, Color::new(0.0, 0.0, 0.0, 0.3));
-                let font_size = (radius * 0.6).max(14.0).min(40.0) as u16;
-                let text_dims = measure_text(&c.name, None, font_size, 1.0);
+                if radius >= 15.0 {
+                    labels.push((pos, radius, c.name.clone()));
+                }
+            }
+
+            // Draw cell labels in screen space to avoid font rendering artifacts
+            set_default_camera();
+            for (world_pos, radius, name) in &labels {
+                let screen_pos = cam.world_to_screen(*world_pos);
+                let screen_radius = radius * self.camera_zoom;
+                let font_size = (screen_radius * 0.6).max(10.0).min(40.0) as u16;
+                let text_dims = measure_text(name, None, font_size, 1.0);
                 draw_text(
-                    &c.name,
-                    pos.x - text_dims.width / 2.0,
-                    pos.y + text_dims.height / 4.0,
+                    name,
+                    screen_pos.x - text_dims.width / 2.0,
+                    screen_pos.y + text_dims.height / 4.0,
                     font_size as f32,
                     WHITE,
                 );
             }
+            set_camera(&cam);
         }
 
         // HUD

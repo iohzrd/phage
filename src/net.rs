@@ -93,8 +93,6 @@ pub fn start_host() -> HostNet {
                     if let Ok(mut send) = conn.open_uni().await {
                         let welcome = HostMessage::Welcome { player_id };
                         if let Ok(data) = bincode::serde::encode_to_vec(&welcome, bincode::config::legacy()) {
-                            let len = (data.len() as u32).to_le_bytes();
-                            let _ = send.write(&len);
                             let _ = send.write(&data);
                             let _ = send.finish();
                         }
@@ -107,8 +105,6 @@ pub fn start_host() -> HostNet {
                             let msg = HostMessage::State(state);
                             if let Ok(data) = bincode::serde::encode_to_vec(&msg, bincode::config::legacy()) {
                                 if let Ok(mut send) = conn_clone.open_uni().await {
-                                    let len = (data.len() as u32).to_le_bytes();
-                                    let _ = send.write(&len);
                                     let _ = send.write(&data);
                                     let _ = send.finish();
                                 } else {

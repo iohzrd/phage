@@ -2520,6 +2520,8 @@ dependencies = [
  "arboard",
  "base64",
  "bincode",
+ "bytes",
+ "futures-lite",
  "iroh",
  "iroh-gossip",
  "macroquad",

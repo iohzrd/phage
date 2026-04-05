@@ -8,6 +8,8 @@ license = "MIT"
 arboard = "3"
 base64 = "0.22"
 bincode = { version = "2.0.1", features = ["serde"] }
+bytes = "1"
+futures-lite = "2"
 iroh = "0.97"
 iroh-gossip = "0.97"
 macroquad = "0.4"

@@ -35,7 +35,7 @@ pub fn start_host() -> HostNet {
 
             ep.online().await;
             let addr = ep.addr();
-            let ticket_str = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, bincode::serde::encode_to_vec(&addr, bincode::config::standard()).expect("serialize addr"));
+            let ticket_str = base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, serde_json::to_vec(&addr).expect("serialize addr"));
             ticket_tx.send(ticket_str).ok();
 
             let input_tx_clone = input_tx.clone();
@@ -92,7 +92,7 @@ pub fn start_host() -> HostNet {
                     // Send welcome
                     if let Ok(mut send) = conn.open_uni().await {
                         let welcome = HostMessage::Welcome { player_id };
-                        if let Ok(data) = bincode::serde::encode_to_vec(&welcome, bincode::config::standard()) {
+                        if let Ok(data) = bincode::serde::encode_to_vec(&welcome, bincode::config::legacy()) {
                             let len = (data.len() as u32).to_le_bytes();
                             let _ = send.write(&len);
                             let _ = send.write(&data);
@@ -105,7 +105,7 @@ pub fn start_host() -> HostNet {
                     tokio::spawn(async move {
                         while let Some(state) = client_state_rx.recv().await {
                             let msg = HostMessage::State(state);
-                            if let Ok(data) = bincode::serde::encode_to_vec(&msg, bincode::config::standard()) {
+                            if let Ok(data) = bincode::serde::encode_to_vec(&msg, bincode::config::legacy()) {
                                 if let Ok(mut send) = conn_clone.open_uni().await {
                                     let len = (data.len() as u32).to_le_bytes();
                                     let _ = send.write(&len);
@@ -124,7 +124,7 @@ pub fn start_host() -> HostNet {
                             Ok(mut recv) => {
                                 match recv.read_to_end(64 * 1024).await {
                                     Ok(buf) => {
-                                        if let Ok((ClientMessage::Input(input), _)) = bincode::serde::decode_from_slice(&buf, bincode::config::standard()) {
+                                        if let Ok((ClientMessage::Input(input), _)) = bincode::serde::decode_from_slice(&buf, bincode::config::legacy()) {
                                             let _ = input_tx.send((player_id, input));
                                         }
                                     }
@@ -163,7 +163,7 @@ pub fn start_client(ticket_str: &str) -> ClientNet {
 
     let ticket_bytes = base64::Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, ticket_str)
         .expect("Invalid ticket base64");
-    let (addr, _): (EndpointAddr, _) = bincode::serde::decode_from_slice(&ticket_bytes, bincode::config::standard())
+    let addr: EndpointAddr = serde_json::from_slice(&ticket_bytes)
         .expect("Invalid ticket data");
 
     thread::spawn(move || {
@@ -195,7 +195,7 @@ pub fn start_client(ticket_str: &str) -> ClientNet {
                         }
                     };
                     let msg = ClientMessage::Input(input);
-                    if let Ok(data) = bincode::serde::encode_to_vec(&msg, bincode::config::standard()) {
+                    if let Ok(data) = bincode::serde::encode_to_vec(&msg, bincode::config::legacy()) {
                         if let Ok(mut send) = conn_clone.open_uni().await {
                             let _ = send.write(&data);
                             let _ = send.finish();
@@ -212,7 +212,7 @@ pub fn start_client(ticket_str: &str) -> ClientNet {
                     Ok(mut recv) => {
                         match recv.read_to_end(1024 * 1024).await {
                             Ok(buf) => {
-                                if let Ok((msg, _)) = bincode::serde::decode_from_slice::<HostMessage, _>(&buf, bincode::config::standard()) {
+                                if let Ok((msg, _)) = bincode::serde::decode_from_slice::<HostMessage, _>(&buf, bincode::config::legacy()) {
                                     let _ = state_tx.send(msg);
                                 }
                             }

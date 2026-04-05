@@ -87,24 +87,25 @@ async fn main() {
                     draw_text(&status_msg, sw / 2.0 - sd.width / 2.0, sh * 0.85, 20.0, YELLOW);
                 }
 
-                // Handle keyboard input for ticket
-                if let Some(c) = get_char_pressed() {
+                // Handle Ctrl+V paste
+                if is_key_down(KeyCode::LeftControl) && is_key_pressed(KeyCode::V) {
+                    if let Ok(mut clip) = arboard::Clipboard::new() {
+                        if let Ok(text) = clip.get_text() {
+                            ticket_input = text.trim().to_string();
+                        }
+                    }
+                    // Drain any char events so they don't double-append
+                    while get_char_pressed().is_some() {}
+                } else if let Some(c) = get_char_pressed() {
                     if c == '\u{8}' || c == '\u{7f}' {
                         ticket_input.pop();
                     } else if c == '\r' || c == '\n' {
-                        // Enter = join
                         if !ticket_input.is_empty() {
                             status_msg = "Connecting...".to_string();
                         }
                     } else if !c.is_control() {
                         ticket_input.push(c);
                     }
-                }
-
-                // Handle Ctrl+V paste
-                if is_key_down(KeyCode::LeftControl) && is_key_pressed(KeyCode::V) {
-                    // macroquad doesn't have clipboard access easily,
-                    // but the char input above handles pasted text on most platforms
                 }
 
                 // Click detection

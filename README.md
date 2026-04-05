@@ -2,7 +2,7 @@
 
 An agar.io-style multiplayer cell game built with Rust.
 
-Grow your cell by consuming food and smaller cells, split to chase prey, eject mass to feed viruses, and climb the leaderboard.
+Grow your cell by consuming food and smaller cells, split to chase prey, and climb the leaderboard.
 
 ## Features
 

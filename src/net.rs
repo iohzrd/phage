@@ -97,7 +97,7 @@ pub fn start_host() -> HostNet {
                         match bincode::encode_to_vec(&welcome, bincode::config::standard()) {
                             Ok(data) => {
                                 eprintln!("[host] sending welcome to player_id={}, {} bytes", player_id, data.len());
-                                let _ = send.write(&data);
+                                let _ = send.write(&data).await;
                                 let _ = send.finish();
                             }
                             Err(e) => eprintln!("[host] failed to encode welcome: {}", e),
@@ -118,7 +118,7 @@ pub fn start_host() -> HostNet {
                                         eprintln!("[host] sending state #{} to player_id={}, {} bytes", count, writer_player_id, data.len());
                                     }
                                     if let Ok(mut send) = conn_clone.open_uni().await {
-                                        let _ = send.write(&data);
+                                        let _ = send.write(&data).await;
                                         let _ = send.finish();
                                     } else {
                                         eprintln!("[host] failed to open uni stream for player_id={}", writer_player_id);
@@ -226,7 +226,7 @@ pub fn start_client(ticket_str: &str) -> ClientNet {
                     let msg = ClientMessage::Input(input);
                     if let Ok(data) = bincode::encode_to_vec(&msg, bincode::config::standard()) {
                         if let Ok(mut send) = conn_clone.open_uni().await {
-                            let _ = send.write(&data);
+                            let _ = send.write(&data).await;
                             let _ = send.finish();
                         } else {
                             break;

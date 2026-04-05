@@ -1,10 +1,11 @@
 use macroquad::prelude::Vec2;
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 pub const GAME_ALPN: &[u8] = b"phage/1";
 
 /// Sent from client to host each frame
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct PlayerInput {
     pub direction: [f32; 2], // target world position relative to player center
     pub split: bool,
@@ -12,7 +13,7 @@ pub struct PlayerInput {
 }
 
 /// A single cell in the world snapshot
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct CellState {
     pub pos: [f32; 2],
     pub mass: f32,
@@ -22,27 +23,27 @@ pub struct CellState {
 }
 
 /// A food pellet
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct FoodState {
     pub pos: [f32; 2],
     pub color: [f32; 4],
 }
 
 /// An ejected mass blob
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct EjectedState {
     pub pos: [f32; 2],
     pub color: [f32; 4],
 }
 
 /// A virus
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct VirusState {
     pub pos: [f32; 2],
 }
 
 /// Leaderboard entry
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct LeaderEntry {
     pub name: String,
     pub mass: u32,
@@ -50,7 +51,7 @@ pub struct LeaderEntry {
 }
 
 /// Full world state broadcast from host to clients
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub struct WorldState {
     pub cells: Vec<CellState>,
     pub food: Vec<FoodState>,
@@ -62,7 +63,7 @@ pub struct WorldState {
 }
 
 /// Messages from host to client
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub enum HostMessage {
     /// Your player ID assignment
     Welcome { player_id: u8 },
@@ -71,7 +72,7 @@ pub enum HostMessage {
 }
 
 /// Messages from client to host
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Encode, Decode, Clone, Debug)]
 pub enum ClientMessage {
     Input(PlayerInput),
 }

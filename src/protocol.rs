@@ -19,7 +19,8 @@ pub struct CellState {
     pub mass: f32,
     pub color: [f32; 4],
     pub name: String,
-    pub owner_id: u8, // 0 = this client's player, 1+ = other players / AI
+    pub owner_id: u8,
+    pub cell_id: u32, // unique id for interpolation matching
 }
 
 /// A food pellet

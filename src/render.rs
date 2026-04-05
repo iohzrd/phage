@@ -186,7 +186,7 @@ impl Game {
 
                 // Interpolate position from previous state
                 let pos = if let Some(ref prev) = self.prev_state {
-                    if let Some(pc) = prev.cells.iter().find(|pc| pc.owner_id == c.owner_id && pc.name == c.name) {
+                    if let Some(pc) = prev.cells.iter().find(|pc| pc.cell_id == c.cell_id) {
                         let prev_pos = vec2(pc.pos[0], pc.pos[1]);
                         let curr_pos = vec2(c.pos[0], c.pos[1]);
                         prev_pos.lerp(curr_pos, t)
@@ -221,7 +221,18 @@ impl Game {
         draw_text(&format!("FPS: {}", get_fps()), 10.0, 60.0, 24.0, LIGHTGRAY);
 
         if let Some(ref state) = self.client_state {
-            self.draw_leaderboard_from(&state.leaderboard);
+            // Rebuild leaderboard with correct "is_you" for this client
+            let my_id = self.my_player_id.unwrap_or(255);
+            let corrected: Vec<LeaderEntry> = state.leaderboard.iter().map(|e| {
+                // Find if this entry corresponds to us by checking owner_ids in cells
+                let is_me = state.cells.iter().any(|c| c.owner_id == my_id && c.name == e.name);
+                LeaderEntry {
+                    name: e.name.clone(),
+                    mass: e.mass,
+                    is_you: is_me,
+                }
+            }).collect();
+            self.draw_leaderboard_from(&corrected);
         } else {
             self.draw_leaderboard();
         }

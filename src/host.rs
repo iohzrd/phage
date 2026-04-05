@@ -231,7 +231,7 @@ impl Game {
             self.net_tick_accum += dt;
             if self.net_tick_accum >= NET_TICK_RATE {
                 self.net_tick_accum = 0.0;
-                let state = self.snapshot_world_state();
+                let state = self.snapshot_world_state_for(0);
                 let _ = host_net.state_tx.send(state);
             }
 
@@ -298,11 +298,11 @@ impl Game {
         self.state_lerp_t = (self.state_lerp_t + dt * 20.0).min(1.0); // 20 = NET_TICK_RATE inverse
 
         if let Some(ref state) = self.client_state {
-            self.score = state.your_score as f32;
             self.game_over = state.game_over;
 
             let my_id = self.my_player_id.unwrap_or(255);
             let our_cells: Vec<&CellState> = state.cells.iter().filter(|c| c.owner_id == my_id).collect();
+            self.score = our_cells.iter().map(|c| c.mass).sum();
             if !our_cells.is_empty() {
                 let total: f32 = our_cells.iter().map(|c| c.mass).sum();
                 let com: Vec2 = our_cells.iter().map(|c| vec2(c.pos[0], c.pos[1]) * c.mass).sum::<Vec2>() / total;
@@ -314,9 +314,10 @@ impl Game {
         }
     }
 
-    pub fn snapshot_world_state(&self) -> WorldState {
+    pub fn snapshot_world_state_for(&self, target_player_id: u8) -> WorldState {
         let mut cells = Vec::new();
 
+        // Host cells: owner_id 0
         for c in &self.player_cells {
             cells.push(CellState {
                 pos: [c.pos.x, c.pos.y],
@@ -324,9 +325,11 @@ impl Game {
                 color: [c.color.r, c.color.g, c.color.b, c.color.a],
                 name: c.name.clone(),
                 owner_id: 0,
+                cell_id: c.id,
             });
         }
 
+        // Net players: owner_id = their player_id
         for (&pid, np) in &self.net_players {
             for c in &np.cells {
                 cells.push(CellState {
@@ -335,17 +338,20 @@ impl Game {
                     color: [c.color.r, c.color.g, c.color.b, c.color.a],
                     name: c.name.clone(),
                     owner_id: pid,
+                    cell_id: c.id,
                 });
             }
         }
 
-        for c in &self.ai_blobs {
+        // AI bots: each gets a unique owner_id starting from 200
+        for (i, c) in self.ai_blobs.iter().enumerate() {
             cells.push(CellState {
                 pos: [c.pos.x, c.pos.y],
                 mass: c.mass,
                 color: [c.color.r, c.color.g, c.color.b, c.color.a],
                 name: c.name.clone(),
-                owner_id: 255,
+                owner_id: 200u8.wrapping_add(i as u8),
+                cell_id: c.id,
             });
         }
 
@@ -363,20 +369,31 @@ impl Game {
             pos: [v.pos.x, v.pos.y],
         }).collect();
 
-        let mut entries: Vec<(&str, f32)> = vec![("You", total_mass(&self.player_cells))];
-        for np in self.net_players.values() {
-            entries.push((&np.name, total_mass(&np.cells)));
+        // Build leaderboard with correct "is_you" for the target player
+        let host_name = "Host";
+        let mut entries: Vec<(&str, f32, bool)> = vec![(host_name, total_mass(&self.player_cells), target_player_id == 0)];
+        for (&pid, np) in &self.net_players {
+            entries.push((&np.name, total_mass(&np.cells), pid == target_player_id));
         }
         for ai in &self.ai_blobs {
-            entries.push((&ai.name, ai.mass));
+            entries.push((&ai.name, ai.mass, false));
         }
         entries.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         entries.truncate(10);
-        let leaderboard: Vec<LeaderEntry> = entries.iter().map(|(name, mass)| LeaderEntry {
+        let leaderboard: Vec<LeaderEntry> = entries.iter().map(|(name, mass, is_you)| LeaderEntry {
             name: name.to_string(),
             mass: *mass as u32,
-            is_you: *name == "You",
+            is_you: *is_you,
         }).collect();
+
+        // Score for the target player
+        let your_score = if target_player_id == 0 {
+            total_mass(&self.player_cells) as u32
+        } else if let Some(np) = self.net_players.get(&target_player_id) {
+            total_mass(&np.cells) as u32
+        } else {
+            0
+        };
 
         WorldState {
             cells,
@@ -384,7 +401,7 @@ impl Game {
             ejected,
             viruses,
             leaderboard,
-            your_score: total_mass(&self.player_cells) as u32,
+            your_score,
             game_over: self.game_over,
         }
     }

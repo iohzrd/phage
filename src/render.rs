@@ -176,20 +176,35 @@ impl Game {
                 draw_circle(v.pos[0], v.pos[1], VIRUS_RADIUS, Color::new(0.2, 0.8, 0.2, 0.7));
             }
 
-            // Cells (sorted by mass)
+            // Cells (sorted by mass) with interpolation
+            let t = self.state_lerp_t;
             let mut sorted: Vec<&CellState> = state.cells.iter().collect();
             sorted.sort_by(|a, b| a.mass.partial_cmp(&b.mass).unwrap());
             for c in &sorted {
                 let color = Color::new(c.color[0], c.color[1], c.color[2], c.color[3]);
                 let radius = mass_to_radius(c.mass);
-                draw_circle(c.pos[0], c.pos[1], radius, color);
-                draw_circle_lines(c.pos[0], c.pos[1], radius, 2.0, Color::new(0.0, 0.0, 0.0, 0.3));
+
+                // Interpolate position from previous state
+                let pos = if let Some(ref prev) = self.prev_state {
+                    if let Some(pc) = prev.cells.iter().find(|pc| pc.owner_id == c.owner_id && pc.name == c.name) {
+                        let prev_pos = vec2(pc.pos[0], pc.pos[1]);
+                        let curr_pos = vec2(c.pos[0], c.pos[1]);
+                        prev_pos.lerp(curr_pos, t)
+                    } else {
+                        vec2(c.pos[0], c.pos[1])
+                    }
+                } else {
+                    vec2(c.pos[0], c.pos[1])
+                };
+
+                draw_circle(pos.x, pos.y, radius, color);
+                draw_circle_lines(pos.x, pos.y, radius, 2.0, Color::new(0.0, 0.0, 0.0, 0.3));
                 let font_size = (radius * 0.6).max(14.0).min(40.0) as u16;
                 let text_dims = measure_text(&c.name, None, font_size, 1.0);
                 draw_text(
                     &c.name,
-                    c.pos[0] - text_dims.width / 2.0,
-                    c.pos[1] + text_dims.height / 4.0,
+                    pos.x - text_dims.width / 2.0,
+                    pos.y + text_dims.height / 4.0,
                     font_size as f32,
                     WHITE,
                 );
@@ -320,7 +335,8 @@ impl Game {
         draw_rectangle_lines(map_x, map_y, map_size, map_size, 1.0, WHITE);
 
         if let Some(ref state) = self.client_state {
-            for c in state.cells.iter().filter(|c| c.owner_id == 0) {
+            let my_id = self.my_player_id.unwrap_or(255);
+            for c in state.cells.iter().filter(|c| c.owner_id == my_id) {
                 let mx = map_x + c.pos[0] * scale;
                 let my = map_y + c.pos[1] * scale;
                 draw_circle(mx, my, 3.0, self.player_color);

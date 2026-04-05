@@ -271,9 +271,14 @@ impl Game {
             let mut got_state = false;
             while let Ok(msg) = client_net.state_rx.try_recv() {
                 match msg {
-                    HostMessage::Welcome { player_id: _ } => {}
+                    HostMessage::Welcome { player_id } => {
+                        eprintln!("[client] received welcome, my player_id={}", player_id);
+                        self.my_player_id = Some(player_id);
+                    }
                     HostMessage::State(state) => {
+                        self.prev_state = self.client_state.take();
                         self.client_state = Some(state);
+                        self.state_lerp_t = 0.0;
                         got_state = true;
                     }
                 }
@@ -289,11 +294,15 @@ impl Game {
             }
         }
 
+        // Advance interpolation
+        self.state_lerp_t = (self.state_lerp_t + dt * 20.0).min(1.0); // 20 = NET_TICK_RATE inverse
+
         if let Some(ref state) = self.client_state {
             self.score = state.your_score as f32;
             self.game_over = state.game_over;
 
-            let our_cells: Vec<&CellState> = state.cells.iter().filter(|c| c.owner_id == 0).collect();
+            let my_id = self.my_player_id.unwrap_or(255);
+            let our_cells: Vec<&CellState> = state.cells.iter().filter(|c| c.owner_id == my_id).collect();
             if !our_cells.is_empty() {
                 let total: f32 = our_cells.iter().map(|c| c.mass).sum();
                 let com: Vec2 = our_cells.iter().map(|c| vec2(c.pos[0], c.pos[1]) * c.mass).sum::<Vec2>() / total;

@@ -59,6 +59,7 @@ impl Game {
                     cell.clamp_to_world();
                     cell.merge_timer = (cell.merge_timer - dt).max(0.0);
                     cell.apply_decay(dt);
+                    cell.update_animation(dt);
                 }
 
                 push_apart(&mut np.cells, dt);
